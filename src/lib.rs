@@ -1,11 +1,4 @@
-//! # nacos-toolkit
-//!
-//! Rust port of the Python `nacos-toolkit`: Nacos configuration parsing and
-//! management — fetch configs from Nacos, render `${VAR}` templates,
-//! deep-merge multiple configs, and read local config files.
-//!
-//! Dynamic config values are represented as [`serde_json::Value`] (mirroring
-//! Python's `dict[str, Any]`).
+#![doc = include_str!("../README.md")]
 
 pub mod client;
 pub mod error;
@@ -17,7 +10,9 @@ pub mod parser;
 pub mod template;
 pub mod utils;
 
-pub use client::{get_nacos_config, setup_config_listener, NacosRustClientSource};
+pub use client::{
+    get_nacos_config, reset_global_manager, setup_config_listener, NacosRustClientSource,
+};
 pub use error::ConfigError;
 pub use local_config::{find_local_config, get_local_config, parse_config_file};
 pub use manager::{

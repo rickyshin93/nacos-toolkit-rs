@@ -21,7 +21,7 @@ transport is backed by [`nacos_rust_client`](https://crates.io/crates/nacos_rust
 
 ### Fetch config from Nacos
 
-```rust
+```rust,no_run
 use nacos_toolkit::{get_nacos_config, ConfigRef, NacosConnection};
 
 # async fn run() -> Result<(), Box<dyn std::error::Error>> {
@@ -62,7 +62,7 @@ assert_eq!(cfg["host"], json!("localhost"));
 
 ### Local config files
 
-```rust
+```rust,no_run
 use nacos_toolkit::{find_local_config, get_local_config, parse_config_file};
 
 let cfg = get_local_config("app", "./config");      // auto-discover + parse

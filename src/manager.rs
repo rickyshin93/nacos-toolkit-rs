@@ -106,6 +106,14 @@ impl NacosConfigManager {
     /// Fetch and process configuration. Subsequent calls return the cache until
     /// [`clear_cache`](Self::clear_cache) is called.
     ///
+    /// # Warning
+    ///
+    /// The cache is keyed on **nothing**: the first successful call wins, and
+    /// later calls return that cached value while **ignoring `base_configs` and
+    /// `override_config`**. To fetch a different config set, call
+    /// [`clear_cache`](Self::clear_cache) first (this mirrors the Python
+    /// implementation's module-level cache).
+    ///
     /// Behaviour mirrors the Python implementation:
     /// 1. fetch all `base_configs` in order
     /// 2. shallow-merge them into a variable context (`all_data`, last wins)
@@ -118,7 +126,7 @@ impl NacosConfigManager {
         override_config: Option<&ConfigRef>,
     ) -> Result<Value, ConfigError> {
         {
-            let guard = self.config_cache.lock().unwrap();
+            let guard = self.config_cache.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
             if let Some(cached) = guard.as_ref() {
                 return Ok(cached.clone());
             }
@@ -138,7 +146,7 @@ impl NacosConfigManager {
         let last_content = contents.last().cloned().unwrap_or_default();
         let last_config = ConfigParser::parse(last_content.as_str(), NacosParser::Yaml);
 
-        *self.raw_config.lock().unwrap() = Some(all_data.clone());
+        *self.raw_config.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(all_data.clone());
 
         // external_vars = {**all_data, "DEPLOY_ENV": namespace}
         let mut external_vars = all_data.clone();
@@ -170,7 +178,7 @@ impl NacosConfigManager {
             }
         }
 
-        *self.config_cache.lock().unwrap() = Some(config.clone());
+        *self.config_cache.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(config.clone());
         Ok(config)
     }
 
@@ -200,7 +208,7 @@ impl NacosConfigManager {
                 Arc::new(move |content: String| {
                     let parsed = ConfigParser::parse(content.as_str(), NacosParser::Yaml);
                     if let Some(src) = parsed.as_object() {
-                        let mut guard = cache.lock().unwrap();
+                        let mut guard = cache.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
                         if let Some(Value::Object(m)) = guard.as_mut() {
                             for (k, v) in src {
                                 m.insert(k.clone(), v.clone());
@@ -221,12 +229,12 @@ impl NacosConfigManager {
 
     /// Clear the processed and raw caches.
     pub fn clear_cache(&self) {
-        *self.config_cache.lock().unwrap() = None;
-        *self.raw_config.lock().unwrap() = None;
+        *self.config_cache.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = None;
+        *self.raw_config.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = None;
     }
 
     /// The merged raw variable context from the last fetch, if any.
     pub fn get_raw_config(&self) -> Option<Value> {
-        self.raw_config.lock().unwrap().clone()
+        self.raw_config.lock().unwrap_or_else(std::sync::PoisonError::into_inner).clone()
     }
 }
