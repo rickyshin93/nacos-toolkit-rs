@@ -52,6 +52,7 @@ impl NacosRustClientSource {
             .set_endpoint_addrs(&conn.server_addr)
             .set_auth_info(auth_info)
             .set_tenant(conn.namespace.clone())
+            .set_use_grpc(conn.use_grpc)
             .build_config_client();
         Self { client }
     }

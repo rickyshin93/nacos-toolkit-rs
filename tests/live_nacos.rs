@@ -21,6 +21,7 @@ async fn live_fetch_config() {
         namespace: env("NACOS_NS", "public"),
         username: env("NACOS_USER", "nacos"),
         password: env("NACOS_PASS", "nacos"),
+        use_grpc: env("NACOS_USE_GRPC", "true") == "true",
     };
     let base = [ConfigRef::new(
         env("NACOS_DATA_ID", "app.yml"),

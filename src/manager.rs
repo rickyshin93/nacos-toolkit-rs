@@ -22,6 +22,22 @@ pub struct NacosConnection {
     pub namespace: String,
     pub username: String,
     pub password: String,
+    /// Transport for config fetch. `true` = gRPC (Nacos 2.x default, port
+    /// `+1000`); `false` = HTTP over `server_addr`. Use HTTP when the gRPC
+    /// port is firewalled/unreachable.
+    pub use_grpc: bool,
+}
+
+impl Default for NacosConnection {
+    fn default() -> Self {
+        Self {
+            server_addr: String::new(),
+            namespace: String::new(),
+            username: String::new(),
+            password: String::new(),
+            use_grpc: true,
+        }
+    }
 }
 
 /// A reference to one config entry (`data_id` within a `group`).
