@@ -30,6 +30,7 @@ let conn = NacosConnection {
     namespace: "production".into(),
     username: "nacos".into(),
     password: "nacos".into(),
+    use_grpc: true,
 };
 let base = [
     ConfigRef::new("common.yml", "DEFAULT_GROUP"),

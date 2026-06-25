@@ -10,6 +10,10 @@ use serde_json::{Map, Value};
 use crate::nested::{get_nested, set_nested};
 
 static TEMPLATE_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"\$\{([^}]+)\}").unwrap());
+// Whole-value placeholder: the entire string is exactly one `${...}`. Used for
+// "reference is the value" semantics so a container reference keeps its type
+// instead of being stringified (mirrors Python `_WHOLE_TEMPLATE_PATTERN`).
+static WHOLE_TEMPLATE_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\$\{([^}]+)\}$").unwrap());
 
 /// Maximum number of resolution passes (cycle protection).
 pub const MAX_RENDER_DEPTH: usize = 5;
@@ -40,14 +44,35 @@ fn extract_params(v: &Value, out: &mut BTreeSet<String>) {
     }
 }
 
-fn render_value(v: &Value, ctx: &Value) -> Value {
+/// Render a single string value, possibly returning a non-string. When the
+/// whole string is one `${x}` placeholder resolving to a container (array/object),
+/// the container is returned (its inner placeholders rendered) to preserve type.
+/// Scalars keep text-substitution semantics. `depth` guards self-referential
+/// containers (`${a}` -> dict containing `${a}`) from unbounded expansion.
+fn render_string_value(s: &str, ctx: &Value, depth: usize) -> Value {
+    if let Some(caps) = WHOLE_TEMPLATE_PATTERN.captures(s) {
+        if let Some(resolved) = get_nested(ctx, &caps[1]) {
+            if resolved.is_object() || resolved.is_array() {
+                if depth < MAX_RENDER_DEPTH {
+                    return render_value(resolved, ctx, depth + 1);
+                }
+                // Too deep: keep the structure, stop expanding inner placeholders.
+                return resolved.clone();
+            }
+        }
+    }
+    Value::String(TemplateEngine::render_text(s, ctx))
+}
+
+fn render_value(v: &Value, ctx: &Value, depth: usize) -> Value {
     match v {
-        Value::String(s) => Value::String(TemplateEngine::render_text(s, ctx)),
+        Value::String(s) => render_string_value(s, ctx, depth),
         Value::Array(arr) => Value::Array(
             arr.iter()
                 .map(|item| match item {
+                    // Array string items: text-only substitution (matches Python).
                     Value::String(s) => Value::String(TemplateEngine::render_text(s, ctx)),
-                    Value::Object(_) => render_value(item, ctx),
+                    Value::Object(_) => render_value(item, ctx, depth),
                     // Nested arrays / scalars are kept as-is (matches Python).
                     other => other.clone(),
                 })
@@ -55,7 +80,7 @@ fn render_value(v: &Value, ctx: &Value) -> Value {
         ),
         Value::Object(map) => Value::Object(
             map.iter()
-                .map(|(k, vv)| (k.clone(), render_value(vv, ctx)))
+                .map(|(k, vv)| (k.clone(), render_value(vv, ctx, depth)))
                 .collect(),
         ),
         other => other.clone(),
@@ -131,6 +156,6 @@ impl TemplateEngine {
             set_nested(&mut enriched, param, val);
         }
 
-        render_value(config, &enriched)
+        render_value(config, &enriched, 0)
     }
 }

@@ -168,3 +168,52 @@ fn render_handles_dot_notation_in_context() {
     let r = TemplateEngine::render(&config, &ctx);
     assert_eq!(r["url"], json!("http://api.com"));
 }
+
+// ---- whole-value placeholder: container type preservation ----
+
+#[test]
+fn render_account_dict_via_whole_placeholder() {
+    // ${platform.gcp.account} 指向 dict —— 应保留 dict 而非 str(repr)
+    let config = json!({"gcp": {"account": "${platform.gcp.account}"}});
+    let ctx = json!({"platform": {"gcp": {"account": {"type": "service_account", "project_id": "bigdata"}}}});
+    let r = TemplateEngine::render(&config, &ctx);
+    assert_eq!(r["gcp"]["account"], json!({"type": "service_account", "project_id": "bigdata"}));
+}
+
+#[test]
+fn render_list_via_whole_placeholder() {
+    let config = json!({"kb_list": "${platform.kb_list}"});
+    let ctx = json!({"platform": {"kb_list": ["medical", "diagnosis"]}});
+    let r = TemplateEngine::render(&config, &ctx);
+    assert_eq!(r["kb_list"], json!(["medical", "diagnosis"]));
+}
+
+#[test]
+fn render_inner_placeholders_of_substituted_dict() {
+    let config = json!({"open_api": "${platform.open_api}"});
+    let ctx = json!({
+        "platform": {"open_api": {"base_url": "http://${DEPLOY_ENV}.example.com", "is_action": false}},
+        "DEPLOY_ENV": "test3"
+    });
+    let r = TemplateEngine::render(&config, &ctx);
+    assert_eq!(r["open_api"]["base_url"], json!("http://test3.example.com"));
+    assert_eq!(r["open_api"]["is_action"], json!(false));
+}
+
+#[test]
+fn render_scalar_whole_placeholder_still_substitutes() {
+    // 标量整值占位符仍走文本替换（与 Python 一致）
+    let config = json!({"host": "${platform.host}"});
+    let ctx = json!({"platform": {"host": "localhost"}});
+    let r = TemplateEngine::render(&config, &ctx);
+    assert_eq!(r["host"], json!("localhost"));
+}
+
+#[test]
+fn render_self_referential_container_terminates() {
+    // ${a} 指向含 ${a} 的 dict —— 深度兜底应终止而非爆栈
+    let config = json!({"x": "${a}"});
+    let ctx = json!({"a": {"inner": "${a}"}});
+    let r = TemplateEngine::render(&config, &ctx);
+    assert!(r["x"].is_object());
+}
