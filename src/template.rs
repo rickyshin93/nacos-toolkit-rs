@@ -11,7 +11,7 @@ use crate::nested::{get_nested, set_nested};
 
 static TEMPLATE_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"\$\{([^}]+)\}").unwrap());
 // Whole-value placeholder: the entire string is exactly one `${...}`. Used for
-// "reference is the value" semantics so a container reference keeps its type
+// "reference is the value" semantics so a reference keeps its JSON type
 // instead of being stringified (mirrors Python `_WHOLE_TEMPLATE_PATTERN`).
 static WHOLE_TEMPLATE_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\$\{([^}]+)\}$").unwrap());
 
@@ -45,9 +45,9 @@ fn extract_params(v: &Value, out: &mut BTreeSet<String>) {
 }
 
 /// Render a single string value, possibly returning a non-string. When the
-/// whole string is one `${x}` placeholder resolving to a container (array/object),
-/// the container is returned (its inner placeholders rendered) to preserve type.
-/// Scalars keep text-substitution semantics. `depth` guards self-referential
+/// whole string is one `${x}` placeholder, the resolved value is returned with
+/// its JSON type preserved. Containers also render their inner placeholders.
+/// `depth` guards self-referential
 /// containers (`${a}` -> dict containing `${a}`) from unbounded expansion.
 fn render_string_value(s: &str, ctx: &Value, depth: usize) -> Value {
     if let Some(caps) = WHOLE_TEMPLATE_PATTERN.captures(s) {
@@ -57,6 +57,9 @@ fn render_string_value(s: &str, ctx: &Value, depth: usize) -> Value {
                     return render_value(resolved, ctx, depth + 1);
                 }
                 // Too deep: keep the structure, stop expanding inner placeholders.
+                return resolved.clone();
+            }
+            if !resolved.is_string() {
                 return resolved.clone();
             }
         }

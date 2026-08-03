@@ -169,7 +169,7 @@ fn render_handles_dot_notation_in_context() {
     assert_eq!(r["url"], json!("http://api.com"));
 }
 
-// ---- whole-value placeholder: container type preservation ----
+// ---- whole-value placeholder: JSON type preservation ----
 
 #[test]
 fn render_account_dict_via_whole_placeholder() {
@@ -201,12 +201,20 @@ fn render_inner_placeholders_of_substituted_dict() {
 }
 
 #[test]
-fn render_scalar_whole_placeholder_still_substitutes() {
-    // 标量整值占位符仍走文本替换（与 Python 一致）
+fn render_string_whole_placeholder_still_substitutes() {
     let config = json!({"host": "${platform.host}"});
     let ctx = json!({"platform": {"host": "localhost"}});
     let r = TemplateEngine::render(&config, &ctx);
     assert_eq!(r["host"], json!("localhost"));
+}
+
+#[test]
+fn render_scalar_whole_placeholders_preserve_types() {
+    let config = json!({"port": "${platform.port}", "enabled": "${platform.enabled}"});
+    let ctx = json!({"platform": {"port": 8848, "enabled": true}});
+    let r = TemplateEngine::render(&config, &ctx);
+    assert_eq!(r["port"], json!(8848));
+    assert_eq!(r["enabled"], json!(true));
 }
 
 #[test]

@@ -73,6 +73,24 @@ serverOptions:
 }
 
 #[test]
+fn whole_placeholder_preserves_numeric_yaml_value() {
+    let common_yaml = "workbench_engine:\n  idp:\n    poll_interval_secs: 45\n    max_wait_mins: 60";
+    let app_yaml = r#"
+upstream:
+  idp:
+    pollIntervalSecs: ${workbench_engine.idp.poll_interval_secs}
+    maxWaitMins: ${workbench_engine.idp.max_wait_mins}
+"#;
+    let common =
+        NacosConfigUtils::process_configuration(common_yaml, NacosParser::Yaml, None, None);
+    let rendered =
+        NacosConfigUtils::process_configuration(app_yaml, NacosParser::Yaml, Some(&common), None);
+
+    assert_eq!(rendered["upstream"]["idp"]["pollIntervalSecs"], json!(45));
+    assert_eq!(rendered["upstream"]["idp"]["maxWaitMins"], json!(60));
+}
+
+#[test]
 fn end_to_end_with_override() {
     let base = json!({"host": "localhost", "port": 3000, "cors": {"whitelist": ["http://a.com"]}});
     let override_yaml = "port: 9999\ncors:\n  whitelist:\n    - http://b.com\n    - http://c.com";

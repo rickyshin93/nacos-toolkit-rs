@@ -11,7 +11,8 @@ transport is backed by [`nacos_rust_client`](https://crates.io/crates/nacos_rust
 ## Features
 
 - **Template engine** — `${VAR}` with dot-notation (`${redis.hostname}`),
-  recursive resolution (≤ 5 passes), cycle protection, undefined-vars kept as-is.
+  recursive resolution (≤ 5 passes), typed whole-value references, cycle protection,
+  undefined-vars kept as-is.
 - **Deep merge** — objects merged recursively, arrays replaced, scalars overridden.
 - **YAML / JSON parsing** — invalid input degrades to an empty object.
 - **Local config discovery** — priority `.json` → `.yaml` → `.yml`.
