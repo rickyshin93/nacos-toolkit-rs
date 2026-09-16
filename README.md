@@ -6,7 +6,7 @@ deep-merge multiple configs, and read local config files.
 
 Dynamic config values are represented as `serde_json::Value` (mirroring
 Python's `dict[str, Any]`). YAML is parsed with `serde_norway`, the Nacos
-transport is backed by [`nacos_rust_client`](https://crates.io/crates/nacos_rust_client).
+transport is plain HTTP against the Nacos OpenAPI (`/nacos/v1/cs/configs`).
 
 ## Features
 
@@ -16,7 +16,8 @@ transport is backed by [`nacos_rust_client`](https://crates.io/crates/nacos_rust
 - **Deep merge** — objects merged recursively, arrays replaced, scalars overridden.
 - **YAML / JSON parsing** — invalid input degrades to an empty object.
 - **Local config discovery** — priority `.json` → `.yaml` → `.yml`.
-- **Async Nacos client** — fetch, cache, and listen for config changes.
+- **Async Nacos client** — fetch and cache configs over HTTP. (Config-change
+  listening is not implemented by this transport.)
 
 ## Quick start
 
@@ -31,6 +32,7 @@ let conn = NacosConnection {
     namespace: "production".into(),
     username: "nacos".into(),
     password: "nacos".into(),
+    // ignored: the transport is always HTTP; kept for compatibility
     use_grpc: true,
 };
 let base = [
